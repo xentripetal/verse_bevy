@@ -1,6 +1,9 @@
 target/
 .idea/
-.cargo/
+!.cargo
+.cargo/*
+!.cargo/config.toml
+
 .DS_Store
 
 build/web/
