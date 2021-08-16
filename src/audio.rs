@@ -11,6 +11,12 @@ impl Plugin for InternalAudioPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_plugin(AudioPlugin)
             .add_system_set(
+                SystemSet::on_enter(GameState::Menu).with_system(start_music.system())
+            )
+            .add_system_set(
+                SystemSet::on_exit(GameState::Menu).with_system(stop_music.system())
+            )
+            .add_system_set(
                 SystemSet::on_enter(GameState::Playing).with_system(start_audio.system()),
             )
             .add_system_set(
@@ -19,8 +25,15 @@ impl Plugin for InternalAudioPlugin {
     }
 }
 
+fn start_music(audio_assets: Res<AudioAssets>, audio: Res<Audio>) {
+    audio.play_looped(audio_assets.music.clone());
+}
+
+fn stop_music(audio: Res<Audio>) {
+    audio.stop();
+}
+
 fn start_audio(audio_assets: Res<AudioAssets>, audio: Res<Audio>) {
-    audio.set_volume(0.3);
     audio.play_looped(audio_assets.flying.clone());
     audio.pause();
 }

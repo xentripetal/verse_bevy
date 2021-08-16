@@ -1,5 +1,5 @@
 [package]
-name = "bootstrap"
+name = "verse"
 version = "0.0.1"
 publish = false
 authors = ["Xentripetal <cyruscmartien@gmail.com>"]
@@ -21,12 +21,11 @@ default = [
     "bevy/bevy_winit",
     "bevy/render",
     "bevy/png",
-    "verse/default"
+    "bevy_kira_audio/ogg"
 ]
 
 native = [
     "bevy/bevy_wgpu",
-    "verse/native"
 ]
 
 web = [
@@ -39,9 +38,17 @@ dev = [
 ]
 
 [dependencies]
-bevy = { version = "0.5.0", default-features = false }
-verse = { path = "verse" }
 winit = "0.24.0"
+bevy_ecs_tilemap = {git = "https://github.com/StarArawn/bevy_ecs_tilemap", rev = "5717a632a2e951641389bdc772147cd1f2ad481c"}
+bevy = { version = "0.5.0", default-features = false }
+bevy_kira_audio = { version = "0.5.1" }
+bevy_asset_loader = "0.4.0"
+bevy-inspector-egui = "0.6.1"
+rand = "0.8.3"
+bevy_egui = "0.6"
+ldtk_rust = "0.5.2"
+anyhow = "1.0.43"
+serde_json = "1.0.66"
 
 bevy_webgl2 = { version = "0.5.0", optional = true }
 
