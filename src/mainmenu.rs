@@ -1,10 +1,8 @@
-use bevy::math::vec2;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContext, EguiSettings};
 use bevy_egui::egui::Pos2;
 
 use crate::GameState;
-use crate::loading::FontAssets;
 
 pub struct MainMenuPlugin;
 
@@ -46,10 +44,10 @@ fn ui_example(egui_context: ResMut<EguiContext>, mut state: ResMut<State<GameSta
         .movable(false)
         .show(egui_context.ctx(), |ui| {
             if ui.button("Play Game").clicked() {
-                state.set(GameState::Playing);
+                state.set(GameState::Playing).unwrap();
             }
             if ui.button("Play Game").clicked() {
-                state.set(GameState::Playing);
+                state.set(GameState::Playing).unwrap();
             }
         });
 }

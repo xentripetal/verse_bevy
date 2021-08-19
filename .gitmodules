@@ -1,0 +1,3 @@
+[submodule "crates/bevy_ecs_tilemap"]
+	path = crates/bevy_ecs_tilemap
+	url = https://github.com/StarArawn/bevy_ecs_tilemap

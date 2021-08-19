@@ -1,23 +1,55 @@
 use std::collections::{HashMap};
 use bevy_ecs_tilemap::prelude::*;
 
+use futures::future::try_join_all;
 use bevy::{asset::{AssetLoader, AssetPath, BoxedFuture, LoadContext, LoadedAsset}, prelude::*};
 use bevy::reflect::TypeUuid;
-use bevy_inspector_egui::Inspectable;
+use anyhow::{Error, anyhow};
+use ldtk_rust::TileInstance;
+use std::borrow::Borrow;
+use std::path::Path;
+use bevy::asset::AssetIoError;
+use std::future::Future;
 
 #[derive(TypeUuid)]
 #[uuid = "e51081d0-6168-4881-a1c6-4249b2000d7f"]
 pub struct LdtkMap {
     pub project: ldtk_rust::Project,
     pub tilesets: HashMap<i64, Handle<Texture>>,
+   // external_levels: Vec<Handle<ldtk_rust::Level>>
 }
 
+/**
+impl LdtkMap {
+    pub fn inject_external_levels(&mut self) {
+        if !self.project.external_levels {
+            return;
+        }
+        self.project.clear_levels();
+        for level in self.external_levels {
+
+        }
+    }
+}**/
+
+#[derive(Default, TypeUuid)]
+#[uuid = "04c4d11f-bc11-4c93-a49e-f12e7c6df420"]
+pub struct LdtkLevel {
+    pub ldtk_level_uid: f64,
+}
+
+#[derive(Default, Bundle)]
+pub struct LdtkLevelBundle {
+    pub ldtk_level: LdtkLevel,
+    pub map: Map,
+    pub transform: Transform,
+}
 
 #[derive(Default, Bundle)]
 pub struct LdtkMapBundle {
     pub ldtk_map: Handle<LdtkMap>,
-    pub map: Map,
     pub transform: Transform,
+    pub map: Map,
     pub global_transform: GlobalTransform,
 }
 
@@ -30,15 +62,31 @@ impl AssetLoader for LdtkLoader {
         load_context: &'a mut LoadContext,
     ) -> BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
-            let project: ldtk_rust::Project = serde_json::from_slice(bytes)?;
+            let mut project: ldtk_rust::Project = serde_json::from_slice(bytes)?;
+
+            if project.external_levels {
+                // You should probably do this with dependencies but I think it would require a intermediate struct.
+                let mut futures: Vec<BoxedFuture<Result<Vec<u8>, AssetIoError>>> = Vec::new();
+                for level in project.levels.iter() {
+                    futures.push(Box::pin(load_context.read_asset_bytes(load_context.path().parent().unwrap().join(level.external_rel_path.borrow().as_ref().unwrap()))));
+                }
+                project.clear_levels();
+                for level_bytes in try_join_all(futures).await? {
+                    let external_level: ldtk_rust::Level = serde_json::from_slice(level_bytes.as_slice())?;
+                    project.levels.push(external_level);
+                }
+            }
+
             let dependencies: Vec<(i64, AssetPath)> = project.defs.tilesets.iter().map(|tileset| {
                 (tileset.uid, load_context.path().parent().unwrap().join(tileset.rel_path.clone()).into())
             }).collect();
+
 
             let loaded_asset = LoadedAsset::new(LdtkMap {
                 project,
                 tilesets: dependencies.iter().map(|dep| (dep.0, load_context.get_handle(dep.1.clone()))).collect(),
             });
+
             load_context.set_default_asset(loaded_asset.with_dependencies(dependencies.iter().map(|x| x.1.clone()).collect()));
             Ok(())
         })
@@ -50,14 +98,15 @@ impl AssetLoader for LdtkLoader {
     }
 }
 
+
 //noinspection ALL
 pub fn process_loaded_tile_maps(
     mut commands: Commands,
     mut map_events: EventReader<AssetEvent<LdtkMap>>,
-    maps: Res<Assets<LdtkMap>>,
+    ldtk_maps: Res<Assets<LdtkMap>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut query: Query<(
+    mut maps: Query<(
         Entity,
         &Handle<LdtkMap>,
         &mut Map,
@@ -89,12 +138,12 @@ pub fn process_loaded_tile_maps(
     }
 
     for changed_map in changed_maps.iter() {
-        for (_, map_handle, mut map) in query.iter_mut() {
+        for (_, map_handle, mut map) in maps.iter_mut() {
             // only deal with currently changed map
             if map_handle != changed_map {
                 continue;
             }
-            if let Some(ldtk_map) = maps.get(map_handle) {
+            if let Some(ldtk_map) = ldtk_maps.get(map_handle) {
                 // Despawn all tiles/chunks/layers.
                 for (layer_id, layer_entity) in map.get_layers() {
                     if let Ok(layer) = layer_query.get(layer_entity) {
@@ -137,8 +186,8 @@ pub fn process_loaded_tile_maps(
                     (map_tile_count_y as f32 / 32.0).ceil() as u32,
                 );
 
-                for (layer_id, layer) in ldtk_map.project.levels[0].layer_instances.as_ref().unwrap().iter().rev().enumerate() {
-                    let (texture, tileset) = if let Some(uid) = layer.tileset_def_uid {
+                for (layer_id, ldtk_layer) in ldtk_map.project.levels[0].layer_instances.as_ref().unwrap().iter().rev().enumerate() {
+                    let (texture, tileset) = if let Some(uid) = ldtk_layer.tileset_def_uid {
                         tilesets.get(&uid).unwrap().clone()
                     } else {
                         continue;
@@ -162,7 +211,7 @@ pub fn process_loaded_tile_maps(
 
                     let tileset_width_in_tiles = (tileset.px_wid / default_grid_size) as u32;
 
-                    for tile in layer.grid_tiles.iter() {
+                    for tile in ldtk_layer.auto_layer_tiles.iter() {
                         let tileset_x = (tile.src[0] / default_grid_size) as u32;
                         let tileset_y = (tile.src[1] / default_grid_size) as u32;
 
@@ -177,6 +226,9 @@ pub fn process_loaded_tile_maps(
                             pos,
                             Tile {
                                 texture_index: (tileset_y * tileset_width_in_tiles + tileset_x) as u16,
+                                flip_x: tile.f & 1 == 1,
+                                flip_y: tile.f & 2 == 2,
+                                color: Color::rgba(1., 1., 1., ldtk_layer.opacity as f32),
                                 ..Default::default()
                             }.into(),
                         ).unwrap();
@@ -201,6 +253,8 @@ pub fn process_loaded_tile_maps(
         }
     }
 }
+
+fn load_grid_tiles() {}
 
 /// Adds the default systems and pipelines used by bevy_ecs_tilemap::ldtk.
 #[derive(Default)]
@@ -230,8 +284,8 @@ fn startup(
     commands.entity(map_entity)
         .insert_bundle(LdtkMapBundle {
             ldtk_map: handle,
-            map: Map::new(0u16, map_entity),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            map: Map::new(0u16, map_entity),
             ..Default::default()
         });
 }
