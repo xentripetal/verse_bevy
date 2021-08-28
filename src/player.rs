@@ -13,11 +13,9 @@ pub struct Player;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_system_set(
-            SystemSet::on_enter(GameState::Playing)
-                .with_system(spawn_camera.system()),
+            SystemSet::on_enter(GameState::Playing).with_system(spawn_camera.system()),
         )
-        .add_system_set(SystemSet::on_update(GameState::Playing)
-            .with_system(movement.system()));
+        .add_system_set(SystemSet::on_update(GameState::Playing).with_system(movement.system()));
     }
 }
 
@@ -57,7 +55,6 @@ fn move_player(
         player_transform.translation += movement;
     }
 }
-
 
 // A simple camera system for moving and zooming the camera.
 pub fn movement(

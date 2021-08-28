@@ -2,10 +2,10 @@ use bevy_inspector_egui::WorldInspectorPlugin;
 
 mod actions;
 mod audio;
+mod ldtk;
 mod loading;
 mod mainmenu;
 mod player;
-mod ldtk;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
@@ -13,12 +13,12 @@ use crate::loading::LoadingPlugin;
 use crate::mainmenu::MainMenuPlugin;
 use crate::player::PlayerPlugin;
 
+use crate::ldtk::LdtkPlugin;
 use bevy::app::AppBuilder;
 #[cfg(debug_assertions)]
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_ecs_tilemap::TilemapPlugin;
-use crate::ldtk::LdtkPlugin;
 
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html

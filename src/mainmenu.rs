@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContext, EguiSettings};
 use bevy_egui::egui::Pos2;
+use bevy_egui::{egui, EguiContext, EguiSettings};
 
 use crate::GameState;
 

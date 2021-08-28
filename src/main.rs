@@ -1,16 +1,16 @@
 // disable console on windows for release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use bevy::DefaultPlugins;
 use bevy::ecs::prelude::ResMut;
 use bevy::prelude::{App, ClearColor, Color, Msaa, WindowDescriptor};
 use bevy::window::WindowMode::BorderlessFullscreen;
+use bevy::DefaultPlugins;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
 #[cfg(target_arch = "wasm32")]
 use bevy_webgl2;
 
+use bevy_ecs_tilemap::TilemapPlugin;
 use verse::GamePlugin;
-use bevy_ecs_tilemap::{TilemapPlugin};
 
 fn main() {
     let mut app = App::build();
@@ -27,7 +27,7 @@ fn main() {
         .add_plugin(GamePlugin);
 
     #[cfg(target_arch = "wasm32")]
-        app.add_plugin(bevy_webgl2::WebGL2Plugin);
+    app.add_plugin(bevy_webgl2::WebGL2Plugin);
 
     app.run();
 }
